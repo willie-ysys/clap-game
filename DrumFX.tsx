@@ -1,5 +1,6 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
-import clownPng from "./src/yy.png";
+import clownPng from "../yy.png";  // ⭐ 這行改成 ../yy.png
+
 export type Verdict = "Perfect" | "Good" | "Miss" | "-";
 export type DrumFXHandle = { pulse: () => void; celebrate: (v: Verdict) => void; };
 
@@ -10,13 +11,16 @@ export default forwardRef<DrumFXHandle, { clownImg?: string }>(function DrumFX(
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const drumRef = useRef<HTMLDivElement | null>(null);
   const sticksRef = useRef<HTMLDivElement | null>(null);
-  const [confetti, setConfetti] = useState<Array<{id:number;x:number;y:number;rot:number;delay:number;dur:number}>>([]);
+  const [confetti, setConfetti] = useState<
+    Array<{ id: number; x: number; y: number; rot: number; delay: number; dur: number }>
+  >([]);
 
   useImperativeHandle(ref, () => ({
     pulse() {
       drumRef.current?.classList.remove("fx-pulse");
       void drumRef.current?.offsetWidth;
       drumRef.current?.classList.add("fx-pulse");
+
       sticksRef.current?.classList.remove("fx-sticks");
       void sticksRef.current?.offsetWidth;
       sticksRef.current?.classList.add("fx-sticks");
@@ -31,11 +35,18 @@ export default forwardRef<DrumFXHandle, { clownImg?: string }>(function DrumFX(
       const count = v === "Perfect" ? 28 : 14;
       const now = Date.now();
       const items = Array.from({ length: count }).map((_, i) => ({
-        id: now + i, x: Math.random() * 100, y: 0, rot: Math.random() * 360,
-        delay: Math.random() * 120, dur: 900 + Math.random() * 700,
+        id: now + i,
+        x: Math.random() * 100,
+        y: 0,
+        rot: Math.random() * 360,
+        delay: Math.random() * 120,
+        dur: 900 + Math.random() * 700,
       }));
-      setConfetti(prev => [...prev, ...items]);
-      setTimeout(() => setConfetti(prev => prev.filter(c => now + count <= c.id)), 2000);
+      setConfetti((prev) => [...prev, ...items]);
+      setTimeout(
+        () => setConfetti((prev) => prev.filter((c) => now + count <= c.id)),
+        2000
+      );
     },
   }));
 
@@ -53,10 +64,17 @@ export default forwardRef<DrumFXHandle, { clownImg?: string }>(function DrumFX(
         </div>
       </div>
       <div className="fx-confetti-layer" aria-hidden>
-        {confetti.map(c => (
-          <span key={c.id} className="fx-confetti"
-            style={{ left: \`\${c.x}%\`, animationDelay: \`\${c.delay}ms\`,
-                     animationDuration: \`\${c.dur}ms\`, rotate: \`\${c.rot}deg\` }} />
+        {confetti.map((c) => (
+          <span
+            key={c.id}
+            className="fx-confetti"
+            style={{
+              left: `${c.x}%`,
+              animationDelay: `${c.delay}ms`,
+              animationDuration: `${c.dur}ms`,
+              rotate: `${c.rot}deg`,
+            }}
+          />
         ))}
       </div>
     </div>
