@@ -4,7 +4,7 @@ import "./score-cards.css";
 import React, { useEffect, useRef, useState } from "react";
 import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
 import "./drum-pulse.css";
-
+import clownPng from "./yy.png";
 type GamePhase = "idle" | "calibrating" | "ready" | "playing" | "finished";
 type Level = 1 | 2 | 3;
 type StickSide = "L" | "R";
@@ -752,7 +752,7 @@ export default function RhythmClapGame() {
           }
         >
           <div id="clown-hero" className={imgAnim}>
-            <img src="/yy.png" alt="clown" />
+            <img src={clownPng} alt="clown" />
           </div>
 
           {/* ⭐ 音符特效層 */}

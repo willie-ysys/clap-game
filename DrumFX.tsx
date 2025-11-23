@@ -1,10 +1,11 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
-
+import clownPng from "./src/yy.png";
 export type Verdict = "Perfect" | "Good" | "Miss" | "-";
 export type DrumFXHandle = { pulse: () => void; celebrate: (v: Verdict) => void; };
 
 export default forwardRef<DrumFXHandle, { clownImg?: string }>(function DrumFX(
-  { clownImg = "/yy.png" }, ref
+  { clownImg = clownPng },
+  ref
 ) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const drumRef = useRef<HTMLDivElement | null>(null);
