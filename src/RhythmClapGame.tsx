@@ -755,6 +755,7 @@ export default function RhythmClapGame() {
             <img src={clownPng} alt="clown" />
           </div>
 
+
           {/* ⭐ 音符特效層 */}
           <div className="note-layer">
             {notes.map((n) => (
