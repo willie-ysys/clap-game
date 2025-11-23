@@ -4,7 +4,7 @@ import "./score-cards.css";
 import React, { useEffect, useRef, useState } from "react";
 import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
 import "./drum-pulse.css";
-import clownPng from "./yy.png";
+import clownPng from "./assets/yy.png";
 type GamePhase = "idle" | "calibrating" | "ready" | "playing" | "finished";
 type Level = 1 | 2 | 3;
 type StickSide = "L" | "R";
