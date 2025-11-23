@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
-import clownPng from "../yy.png";  // ⭐ 這行改成 ../yy.png
+import clownPng from "./yy.png"; // ✅ 正確路徑（同資料夾下）
 
 export type Verdict = "Perfect" | "Good" | "Miss" | "-";
 export type DrumFXHandle = { pulse: () => void; celebrate: (v: Verdict) => void; };
