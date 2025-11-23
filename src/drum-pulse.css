@@ -1,0 +1,101 @@
+#clown-hero{
+  position:relative;
+  display:inline-block;
+  filter: drop-shadow(0 12px 22px rgba(0,0,0,.35));
+  transform-origin: 50% 65%;
+}
+/* ✅ 小丑外層只負責定位，真正放大動畫套在裡面那張圖 */
+#clown-hero.drum-pulse img {
+  animation: drumPulse .16s ease-out;
+}
+
+@keyframes drumPulse{
+  0%{ transform: scale(1);    filter: drop-shadow(0 12px 22px rgba(0,0,0,.35)) }
+  55%{transform: scale(1.06); filter: drop-shadow(0 18px 34px rgba(255,220,120,.45)) }
+  100%{transform: scale(1);   filter: drop-shadow(0 12px 22px rgba(0,0,0,.35)) }
+}
+#clown-hero::after{
+  content:"";
+  position:absolute; left:50%; top:70%;
+  width:44%; aspect-ratio:1/1; translate:-50% -50%;
+  border-radius:50%;
+  box-shadow:0 0 0 0 rgba(255,210,120,.0);
+  pointer-events:none;
+}
+#clown-hero.drum-pulse::after{ animation: ring .16s ease-out }
+@keyframes ring{
+  0%{ box-shadow:0 0 0 0 rgba(255,210,120,.00) }
+  40%{ box-shadow:0 0 24px 8px rgba(255,210,120,.55) }
+  100%{ box-shadow:0 0 36px 14px rgba(255,210,120,.0) }
+}
+
+/* ⭐ 音符特效：蓋在小丑上面 */
+.note-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* 基本音符樣式（不指定顏色，顏色交給額外的 class） */
+.music-note {
+  position: absolute;
+  bottom: 40%;                 /* 小丑頭上方冒出來 */
+  font-size: 38px;
+  opacity: 0;
+  transform: translate(-50%, 10px) scale(0.7);
+  animation: note-pop 1.1s ease-out forwards;
+  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.7));
+}
+
+/* 🎨 不同顏色的音符 */
+.music-note.note-yellow {
+  color: #fff8a5;
+  text-shadow:
+    0 0 8px rgba(255, 255, 200, 0.9),
+    0 0 16px rgba(255, 215, 120, 0.9),
+    0 0 22px rgba(255, 140, 60, 0.7);
+}
+
+.music-note.note-pink {
+  color: #ffc4f9;
+  text-shadow:
+    0 0 8px rgba(255, 210, 240, 0.9),
+    0 0 16px rgba(255, 140, 210, 0.9),
+    0 0 22px rgba(220, 80, 160, 0.7);
+}
+
+.music-note.note-blue {
+  color: #c1e3ff;
+  text-shadow:
+    0 0 8px rgba(190, 230, 255, 0.9),
+    0 0 16px rgba(120, 190, 255, 0.9),
+    0 0 22px rgba(70, 120, 220, 0.7);
+}
+
+.music-note.note-green {
+  color: #c6ffcf;
+  text-shadow:
+    0 0 8px rgba(210, 255, 220, 0.9),
+    0 0 16px rgba(140, 235, 160, 0.9),
+    0 0 22px rgba(70, 190, 110, 0.7);
+}
+
+/* 音符往上飄的動畫 */
+@keyframes note-pop {
+  0% {
+    transform: translate(-50%, 10px) scale(0.7);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  60% {
+    transform: translate(-50%, -40px) scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -80px) scale(1.1);
+    opacity: 0;
+  }
+}

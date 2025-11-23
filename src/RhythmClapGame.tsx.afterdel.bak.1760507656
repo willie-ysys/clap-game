@@ -1,0 +1,417 @@
+import DrumFX, { DrumFXHandle, Verdict } from "./components/DrumFX";
+import "./drumfx.css";
+import "./score-cards.css";
+import React, { useEffect, useRef, useState } from "react";
+import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
+
+type GamePhase = "idle" | "calibrating" | "ready" | "playing" | "finished";
+type Level = 1 | 2 | 3;
+type StickSide = "L" | "R";
+type BeatLog = { expectedAt: number; receivedAt?: number; delta?: number; verdict?: "Perfect" | "Good" | "Miss"; };
+
+const DEFAULT_BPM = 80;
+const CALI_BEATS = 12;
+const GAME_BEATS = 24;
+
+// 計分容許（寬鬆一點）
+const PERFECT_MS = 220;
+const GOOD_MS    = 500;
+
+// 讓連拍容易一點
+const MIN_CLAP_GAP_MS = 120;
+
+// 偵測參數（快拍優化）
+const EMA_DIST_ALPHA = 0.60;
+const EMA_VEL_ALPHA  = 0.70;
+const APPROACH_VEL   = -0.40; // 靠近的速度門檻
+const CONTACT_MARGIN = 1.05;
+const SEPARATE_MARGIN= 1.25;
+const FAST_DROP_PX   = 28;
+
+const clamp = (x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
+const fmt = (x:number,d=1)=>Number.isFinite(x)?x.toFixed(d):"0.0";
+const ema = (x:number, prev:number|null, alpha:number)=> prev==null? x : prev*(1-alpha)+x*alpha;
+
+export default function RhythmClapGame(){
+  const fxRef = useRef<DrumFXHandle>(null);
+  // 判定結果 → 觸發特效
+  useEffect(() => {
+    if (!fxRef.current) return;
+    if (typeof lastVerdict === "string" && lastVerdict !== "-") {
+  // 判定結果 → 觸發特效（放在 lastVerdict 宣告之後）
+  useEffect(() => {
+    if (!fxRef?.current) return;
+    if (typeof lastVerdict === "string" && lastVerdict !== "-") {
+      fxRef.current.celebrate(lastVerdict as Verdict);
+    }
+  }, [lastVerdict]);
+      fxRef.current.celebrate(lastVerdict as Verdict);
+    }
+  }, [lastVerdict]);
+  ;(window as any).fxPulse = () => fxRef.current?.pulse();
+  ;(window as any).fxCelebrate = (v: "Perfect"|"Good"|"Miss"|"-") => fxRef.current?.celebrate(v as Verdict);
+  const [phase,setPhase]=useState<GamePhase>("idle");
+  const [level,setLevel]=useState<Level>(1);
+  const [bpm,setBpm]=useState(DEFAULT_BPM);
+  const [baseDelayMs,setBaseDelayMs]=useState(0);
+  const [beats,setBeats]=useState<BeatLog[]>([]);
+  const [progress,setProgress]=useState(0);
+
+  const [clapCount,setClapCount]=useState(0);
+  const [lastVerdict,setLastVerdict]=useState<BeatLog["verdict"]|"-">("-");
+  const [imgAnim,setImgAnim]=useState<""|"clown-hitL"|"clown-hitR">("");
+  const [downbeatAnim,setDownbeatAnim]=useState(false);
+  const altRef=useRef(false);
+
+  const videoRef=useRef<HTMLVideoElement>(null);
+  const overlayRef=useRef<HTMLCanvasElement>(null);
+  const handRef=useRef<HandLandmarker|null>(null);
+  const animRef=useRef<number>();
+  const lastClapAtRef=useRef(0);
+
+  const [sensitivity,setSensitivity]=useState(1.0);
+  const emaDistRef=useRef<number|null>(null);
+  const emaVelRef=useRef(0);
+  const detPhaseRef=useRef<"SEPARATE"|"APPROACH"|"CONTACT">("SEPARATE");
+  const handScaleRef=useRef(120);
+  const debugRef=useRef({dist:0,vel:0,thr:0,state:"SEPARATE"});
+  const prevRawDistRef=useRef<number>(0);
+
+  // 動態對齊偏移
+  const offsetAdjRef=useRef(0);
+
+  // 避免舊閉包
+  const beatsRef = useRef<BeatLog[]>([]);
+  const phaseRef = useRef<GamePhase>("idle");
+  useEffect(()=>{ beatsRef.current = beats; },[beats]);
+  useEffect(()=>{ phaseRef.current = phase; },[phase]);
+
+  // 掉手容錯
+  const lastPalm1Ref = useRef<{x:number,y:number,time:number}|null>(null);
+  const lastPalm2Ref = useRef<{x:number,y:number,time:number}|null>(null);
+  const PALM_KEEP_MS = 300;
+
+  // 音效
+  const audioCtxRef=useRef<AudioContext|null>(null);
+  const drumKitRef=useRef<ReturnType<typeof createDrumKit>|null>(null);
+  const ensureAudio=()=>{ if(!audioCtxRef.current){ audioCtxRef.current=new (window.AudioContext||(window as any).webkitAudioContext)(); drumKitRef.current=createDrumKit(audioCtxRef.current);} return audioCtxRef.current!; };
+  function createDrumKit(ctx:AudioContext){
+    function tick(v=0.55){const t=ctx.currentTime;const o=ctx.createOscillator();const g=ctx.createGain();const f=ctx.createBiquadFilter();f.type="bandpass";f.frequency.value=1800;f.Q.value=6;o.type="square";o.frequency.setValueAtTime(1800,t);o.frequency.exponentialRampToValueAtTime(900,t+0.06);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.08);o.connect(f).connect(g).connect(ctx.destination);o.start(t);o.stop(t+0.09);}
+    function kick(v=0.7){const t=ctx.currentTime;const o=ctx.createOscillator();const g=ctx.createGain();o.type="sine";o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(60,t+0.12);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.14);o.connect(g).connect(ctx.destination);o.start(t);o.stop(t+0.15);}
+    function snare(v=0.35){const t=ctx.currentTime;const b=ctx.createBuffer(1,Math.floor(ctx.sampleRate*.2),ctx.sampleRate);const d=b.getChannelData(0);for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);const s=ctx.createBufferSource();s.buffer=b;const bp=ctx.createBiquadFilter();bp.type="bandpass";bp.frequency.value=1800;const hp=ctx.createBiquadFilter();hp.type="highpass";hp.frequency.value=1200;const g=ctx.createGain();g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.0001,t+.18);s.connect(bp).connect(hp).connect(g).connect(ctx.destination);s.start(t);s.stop(t+.2);}
+    function accent(v=0.85){kick(Math.min(1,v*.95));tick(v);}
+    return {tick,kick,snare,accent};
+  }
+  const vibrate=(ms=30)=>{"vibrate" in navigator && navigator.vibrate(ms);};
+  const hit=(side:StickSide,down=false)=>{ setImgAnim(side==="L"?"clown-hitL":"clown-hitR"); setTimeout(()=>setImgAnim(""),130); if(down){ setDownbeatAnim(true); setTimeout(()=>setDownbeatAnim(false),180);} };
+
+  // ====== 自動 Miss 監測 ======
+  const missTimerRef = useRef<number|undefined>(undefined);
+  function startMissTimer(){
+    stopMissTimer();
+    missTimerRef.current = window.setInterval(sweepTimeoutMisses, 50);
+  }
+  function stopMissTimer(){
+    if(missTimerRef.current!==undefined){ clearInterval(missTimerRef.current); missTimerRef.current=undefined; }
+  }
+  function sweepTimeoutMisses(){
+    const list = beatsRef.current;
+    if(!list || list.length===0) return;
+    const offset = baseDelayMs + offsetAdjRef.current;
+    const now = performance.now();
+    let changed = false;
+
+    for(let i=0;i<list.length;i++){
+      const b = list[i];
+      if(b.receivedAt!==undefined) continue;
+      // 若已超過「容許寬限（GOOD_MS）」還未拍到，直接標記 Miss
+      if(now > (b.expectedAt + offset + GOOD_MS)){
+        b.receivedAt = now;
+        b.delta = (now - (b.expectedAt + offset));
+        b.verdict = "Miss";
+        changed = true;
+      }else{
+        // 因為陣列按時間排序，遇到第一個還沒超時就可以停止
+        break;
+      }
+    }
+
+    if(changed){
+      // 觸發 React 更新與進度條
+      setBeats(prev=>{
+        const updated=[...list];
+        const done=updated.filter(x=>x.receivedAt!==undefined).length;
+        setProgress((done/updated.length)*100);
+        return updated;
+      });
+    }
+
+    // 全部都評完就結束
+    if(list.every(b=>b.receivedAt!==undefined)){
+      stopMissTimer();
+      if(phaseRef.current==="playing") setTimeout(()=>setPhase("finished"),250);
+    }
+  }
+
+  // ---------- MediaPipe 初始化與偵測 ----------
+  useEffect(()=>{
+    let stopped=false;
+    (async()=>{
+      const files=await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+      const hand=await HandLandmarker.createFromOptions(files,{
+        baseOptions:{modelAssetPath:"https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task"},
+        runningMode:"VIDEO",
+        numHands:2,
+        minHandDetectionConfidence:0.3,
+        minHandPresenceConfidence:0.3,
+        minTrackingConfidence:0.3
+      });
+      if(!stopped) handRef.current=hand;
+      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false});
+      if(videoRef.current){ videoRef.current.srcObject=stream; try{await videoRef.current.play();}catch{} loop(); }
+    })();
+
+    function loop(){
+      cancelAnimationFrame(animRef.current!);
+      const raf=()=>{ try{ detect(); }catch(e){ console.error("detect error",e);} animRef.current=requestAnimationFrame(raf); };
+      animRef.current=requestAnimationFrame(raf);
+    }
+
+    function detect(){
+      const v=videoRef.current,c=overlayRef.current,h=handRef.current; if(!v||!c||!h) return; if(v.readyState<2) return;
+      const w=v.videoWidth,hg=v.videoHeight; if(c.width!==w)c.width=w; if(c.height!==hg)c.height=hg;
+      const ctx=c.getContext("2d")!; ctx.clearRect(0,0,w,hg); ctx.globalAlpha=.9; ctx.drawImage(v,0,0,w,hg);
+
+      const now=performance.now();
+      const res:any = h.detectForVideo(v, now);
+
+      // 畫點
+      ctx.fillStyle="#00e0ff";
+      res?.landmarks?.forEach((L:any)=>L.forEach((p:any)=>{ctx.beginPath();ctx.arc(p.x*w,p.y*hg,2.2,0,Math.PI*2);ctx.fill();}));
+
+      // 取得兩手手心；若掉手，用 300ms 內的位置補上
+      const palm=(lm:any[])=>{const a=lm[0],b=lm[9];return {x:((a.x+b.x)/2)*w,y:((a.y+b.y)/2)*hg};};
+      const sizeFn=(lm:any[])=>{const a=lm[0],b=lm[9];return Math.hypot((a.x-b.x)*w,(a.y-b.y)*hg);};
+
+      let palms:{x:number,y:number}[]=[];
+      if(res?.landmarks?.[0]) { const p=palm(res.landmarks[0]); palms.push(p); lastPalm1Ref.current={...p,time:now}; }
+      if(res?.landmarks?.[1]) { const p=palm(res.landmarks[1]); palms.push(p); lastPalm2Ref.current={...p,time:now}; }
+
+      if(palms.length<2){
+        const lp1=lastPalm1Ref.current, lp2=lastPalm2Ref.current;
+        if(lp1 && lp2 && (now-lp1.time<PALM_KEEP_MS) && (now-lp2.time<PALM_KEEP_MS)){
+          palms=[{x:lp1.x,y:lp1.y},{x:lp2.x,y:lp2.y}];
+        }
+      }
+      if(palms.length<2){
+        emaDistRef.current=null; emaVelRef.current=0; detPhaseRef.current="SEPARATE";
+        debugRef.current={dist:0,vel:0,thr:0,state:"SEPARATE"};
+        return;
+      }
+
+      // 估尺度與距離/速度
+      if(res?.landmarks?.[0] && res?.landmarks?.[1]){
+        const scale=(sizeFn(res.landmarks[0])+sizeFn(res.landmarks[1]))/2 || handScaleRef.current;
+        handScaleRef.current=0.9*handScaleRef.current+0.1*scale;
+      }
+      const [p1,p2]=palms;
+      const dist=Math.hypot(p1.x-p2.x,p1.y-p2.y);
+      const eDist=ema(dist,emaDistRef.current,EMA_DIST_ALPHA);
+      const velRaw = emaDistRef.current!==null? (eDist-emaDistRef.current):0;
+      const eVel=ema(velRaw,emaVelRef.current,EMA_VEL_ALPHA);
+      emaDistRef.current=eDist; emaVelRef.current=eVel;
+
+      const thr=handScaleRef.current*1.00*clamp(sensitivity,0.6,1.6); // 門檻稍降
+
+      const rawDrop = Math.abs(dist - prevRawDistRef.current);
+      prevRawDistRef.current = dist;
+
+      let st=detPhaseRef.current;
+      if(st==="SEPARATE"){
+        if(eVel < APPROACH_VEL) st="APPROACH";
+      }else if(st==="APPROACH"){
+        const contactByNear = eDist < thr*CONTACT_MARGIN;
+        const contactByFast = rawDrop > FAST_DROP_PX && dist < thr*1.20;
+        if(contactByNear || contactByFast){
+          const ts=performance.now();
+          if(ts-lastClapAtRef.current>MIN_CLAP_GAP_MS){ lastClapAtRef.current=ts; onClap(ts); }
+          st="CONTACT";
+        }
+        if(eVel>=0 && eDist>=thr*SEPARATE_MARGIN) st="SEPARATE";
+      }else if(st==="CONTACT"){
+        if(eDist>thr*SEPARATE_MARGIN) st="SEPARATE";
+      }
+      detPhaseRef.current=st;
+
+      // 除錯線
+      ctx.strokeStyle="#00ff99"; ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+      ctx.fillStyle="#fff"; ctx.font="12px monospace";
+      ctx.fillText(`dist:${fmt(eDist)} vel:${fmt(eVel,2)} thr:${fmt(thr)} state:${st}`,10,18);
+      debugRef.current={dist:eDist,vel:eVel,thr,state:st};
+    }
+
+    return ()=>{ cancelAnimationFrame(animRef.current!); if(videoRef.current?.srcObject){(videoRef.current.srcObject as MediaStream).getTracks().forEach(t=>t.stop());} handRef.current?.close(); stopMissTimer(); };
+  },[sensitivity]);
+
+  // ---------- 拍手 -> 計分 ----------
+  function onClap(ts:number){
+    const curPhase = phaseRef.current;
+    if(!(curPhase==="calibrating" || curPhase==="playing")) return;
+    const list = beatsRef.current;
+    if(list.length===0) return;
+    const idx = list.findIndex(b=>b.receivedAt===undefined);
+    if (idx === -1) return;
+
+    setClapCount(c=>c+1);
+
+    const offsetBase = baseDelayMs + offsetAdjRef.current;
+    const target = list[idx];
+    let diff = ts - (target.expectedAt + offsetBase);
+
+    let verdict:BeatLog["verdict"] =
+      Math.abs(diff) <= PERFECT_MS ? "Perfect" :
+      Math.abs(diff) <= GOOD_MS    ? "Good"    : "Miss";
+
+    if (verdict === "Miss") {
+      // 先把 offset 拉近一些再評一次
+      offsetAdjRef.current = ema(-diff, offsetAdjRef.current, 0.9);
+      const newOffset = baseDelayMs + offsetAdjRef.current;
+      diff = ts - (target.expectedAt + newOffset);
+      verdict =
+        Math.abs(diff) <= PERFECT_MS ? "Perfect" :
+        Math.abs(diff) <= GOOD_MS    ? "Good"    : "Miss";
+    } else {
+      offsetAdjRef.current = ema(-diff, offsetAdjRef.current, 0.25);
+    }
+
+    setBeats(prev=>{
+      const updated=[...prev];
+      updated[idx]={...updated[idx], receivedAt: ts, delta: diff, verdict};
+      const done=updated.filter(b=>b.receivedAt!==undefined).length;
+      setProgress((done/updated.length)*100);
+      setLastVerdict(verdict);
+      beatsRef.current = updated;
+      return updated;
+    });
+
+    const drums=drumKitRef.current!; const side:StickSide=(altRef.current=!altRef.current)?"L":"R";
+    if(verdict==="Perfect"){ drums.accent(1.0); hit(side,true); vibrate(40); }
+    else if(verdict==="Good"){ drums.tick(.65); hit(side,false); vibrate(20); }
+    else { drums.snare(.35); hit(side,false); }
+
+    const left = beatsRef.current.findIndex(b=>b.receivedAt===undefined);
+    if(left === -1 && curPhase==="playing"){ setTimeout(()=>setPhase("finished"),250); stopMissTimer(); }
+  }
+
+  // ---------- 流程 ----------
+  async function startCalibration(){
+    setPhase("calibrating"); setBpm(DEFAULT_BPM); setClapCount(0); setLastVerdict("-"); offsetAdjRef.current=0;
+    const seq=prepareBeats(CALI_BEATS, DEFAULT_BPM); setBeats(seq); beatsRef.current = seq; setProgress(0);
+    startMissTimer();
+    await run(seq,{variable:false,distract:false});
+    const deltas=seq.filter(b=>b.receivedAt).map(b=> (b.receivedAt! - b.expectedAt));
+    setBaseDelayMs(deltas.length? median(deltas) : 300);
+    stopMissTimer();
+    setPhase("ready");
+  }
+  async function startGame(){
+    setPhase("playing"); setClapCount(0); setLastVerdict("-"); offsetAdjRef.current=0;
+    const seq=prepareBeats(GAME_BEATS, 80); setBeats(seq); beatsRef.current = seq; setProgress(0);
+    startMissTimer();
+    await run(seq,{variable: level===3, distract: level===3});
+    stopMissTimer();
+    setPhase("finished");
+  }
+
+  async function run(seq:BeatLog[],opt:{variable:boolean; distract:boolean;}){
+    const ctx=ensureAudio(); if(ctx.state==="suspended") await ctx.resume();
+    const drums=drumKitRef.current!;
+    for(let i=0;i<seq.length;i++){
+      const down=(i%4===0); hit(i%2===0?"L":"R",down);
+      if(opt.variable && i===Math.floor(seq.length/2)){
+        const nb=100; setBpm(nb);
+        let t=performance.now(); for(let k=i;k<seq.length;k++){ seq[k].expectedAt=t; t+=60000/nb; }
+      }
+      if(down) drums.accent(1.0); else drums.tick(.85);
+      if(opt.distract && i%2===1) setTimeout(()=>drums.snare(.20),120);
+      const nextAt = i<seq.length-1 ? seq[i+1].expectedAt : seq[i].expectedAt + 60000/bpm;
+      await new Promise(r=>setTimeout(r, Math.max(0,nextAt - performance.now())));
+      // 每拍之後再掃一次（雙保險）
+      sweepTimeoutMisses();
+    }
+  }
+
+  const prepareBeats=(n:number,b:number)=>{ const s=performance.now()+650; const iv=60000/b; return Array.from({length:n},(_,i)=>({expectedAt:s+i*iv})); };
+  const median=(a:number[])=>{ const s=[...a].sort((x,y)=>x-y); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; };
+
+  // 分數區（右欄）
+  const judged=beats.filter(b=>b.verdict);
+  const perfect=judged.filter(b=>b.verdict==="Perfect").length;
+  const good=judged.filter(b=>b.verdict==="Good").length;
+  const miss=judged.filter(b=>b.verdict==="Miss").length;
+  const acc=Math.round(((perfect + good*0.7)/(judged.length||1))*100);
+
+  return (
+    <div className="row">
+      <div className="col left-col">
+        <div className="card">
+          <h2>🎭 小丑打鼓台</h2>
+          <div className="stage">
+            <img src="/yy.png" alt="clown" className={`clown-img ${imgAnim} ${downbeatAnim ? "downbeat" : ""}`} />
+          </div>
+          <div style={{marginTop:12,display:"flex",gap:10,flexWrap:"wrap"}}>
+            <button className="btn ghost" onClick={()=>setLevel(1)} disabled={phase==="calibrating"||phase==="playing"}>Level 1</button>
+            <button className="btn ghost" onClick={()=>setLevel(2)} disabled={phase==="calibrating"||phase==="playing"}>Level 2</button>
+            <button className="btn ghost" onClick={()=>setLevel(3)} disabled={phase==="calibrating"||phase==="playing"}>Level 3</button>
+            <span className="pill">目前難度：{level}</span>
+          </div>
+          <div style={{marginTop:10,display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+            <button className="btn" onClick={startCalibration} disabled={phase==="calibrating"||phase==="playing"}>1) 校準（80 BPM）</button>
+            <button className="btn" onClick={startGame} disabled={phase!=="ready" && phase!=="finished"}>2) 開始遊戲</button>
+            <span className="pill">基準延遲：{baseDelayMs} ms</span>
+            <span className="pill">BPM：{bpm}</span>
+          </div>
+          <div style={{marginTop:10, display:"grid", gridTemplateColumns:"repeat(3,minmax(0,1fr))", gap:8}}>
+            <div style={{background:"#0f1635",border:"1px dashed #2b3874",borderRadius:12,padding:10}}>
+              <div><b>⚙️ 拍手靈敏度</b></div>
+              <input style={{width:"100%"}} type="range" min="0.6" max="1.6" step="0.02" value={sensitivity} onChange={e=>setSensitivity(parseFloat(e.target.value))}/>
+              <div>倍率：<b>{fmt(sensitivity,2)}×</b>（往左 &lt; 1.0 更容易觸發）</div>
+            </div>
+            <div style={{background:"#0f1635",border:"1px dashed #2b3874",borderRadius:12,padding:10}}>
+              <div><b>🧪 偵測狀態</b></div>
+              <div>dist：{fmt(debugRef.current.dist)} px</div>
+              <div>vel ：{fmt(debugRef.current.vel,2)} px/frame</div>
+              <div>thr ：{fmt(debugRef.current.thr)} px</div>
+              <div>state：<b>{debugRef.current.state}</b></div>
+            </div>
+            <div style={{background:"#0f1635",border:"1px dashed #2b3874",borderRadius:12,padding:10}}>
+              <div><b>📊 拍手事件</b></div>
+              <div>偵測到拍手：<b>{clapCount}</b> 次</div>
+              <div>最後一次評分：<b>{lastVerdict}</b></div>
+            </div>
+          </div>
+          <div style={{marginTop:12}}><div className="meter"><div style={{width:`${progress}%`}}/></div></div>
+        </div>
+      </div>
+
+      <div className="col right-col">
+        <div className="card">
+          <h2>📈 遊戲結果</h2>
+          <div className="score-grid">
+            <div className="kpi perfect"><div className="v">{perfect}</div><div className="t">Perfect</div></div>
+            <div className="kpi good"><div className="v">{good}</div><div className="t">Good</div></div>
+            <div className="kpi miss"><div className="v">{miss}</div><div className="t">Miss</div></div>
+            <div className="kpi acc"><div className="v">{acc}%</div><div className="t">綜合分數</div></div>
+          </div>
+        </div>
+
+        <div className="card" style={{marginTop:16}}>
+          <h2>📷 攝影機 + 偵測（畫面可見除錯文字）</h2>
+          {/* 只用 canvas 畫面；如要隱藏 video，給 style display:none */}
+          <video ref={videoRef} playsInline muted style={{display:"none"}} />
+          <canvas ref={overlayRef} />
+        </div>
+      </div>
+    </div>
+  );
+}

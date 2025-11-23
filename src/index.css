@@ -1,0 +1,31 @@
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+
+/* 🔁 把 body 合併成一個規則，直接在這裡設背景圖 */
+body {
+  margin: 0;
+  color: #e6ecff;
+  font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+
+  /* 這裡改成你的舞台背景圖 */
+  background-image: url('/mediapipe/S__38928400.jpg');
+  background-size: cover;          /* 讓圖片填滿整個畫面 */
+  background-position: center;     /* 圖片置中 */
+  background-repeat: no-repeat;    /* 不重複 */
+  background-attachment: fixed;    /* 捲動時背景固定 */
+}
+
+/* #root 只負責高度，不要幫它設底色 */
+#root{min-height:100vh}
+
+.row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:#111a33;border:1px solid #223059;border-radius:14px;padding:16px}
+.stage{display:flex;justify-content:center;align-items:center}
+.clown-img{max-width:100%;height:auto}
+.meter{height:10px;background:#1b274d;border-radius:8px;overflow:hidden}
+.meter>div{height:100%;background:#3b82f6}
+.score-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi{background:#0f1635;border:1px dashed #2b3874;border-radius:12px;padding:10px;text-align:center}
+.kpi .v{font-size:28px;font-weight:700}
+.kpi .t{opacity:.8}
+video,canvas{width:100%;border-radius:14px}

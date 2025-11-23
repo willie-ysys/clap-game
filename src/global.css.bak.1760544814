@@ -1,0 +1,260 @@
+*{box-sizing:border-box}
+html,body,#root{height:100%}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC",Arial,"PingFang TC","Heiti TC",sans-serif;
+  background:#0b1020;color:#eef3ff
+}
+#root{padding:24px}
+#root>*{max-width:1200px;margin-inline:auto}
+h1,h2,h3{margin:0 0 12px;line-height:1.2}
+.subtle{opacity:.75;font-size:12px}
+.card-like{
+  background:#0f1630;border:1px solid rgba(180,200,255,.12);
+  border-radius:14px;padding:14px;
+  box-shadow:0 6px 28px rgba(0,10,40,.25) inset,0 4px 14px rgba(0,0,0,.15)
+}
+img,video{max-width:100%;height:auto;display:block;border-radius:12px}
+button{
+  background:#1b2750;color:#e7edff;border:1px solid rgba(200,220,255,.18);
+  padding:8px 14px;border-radius:10px;cursor:pointer;transition:.15s
+}
+button:hover{transform:translateY(-1px);background:#223067}
+button:disabled{opacity:.5;cursor:not-allowed}
+input[type="range"]{
+  width:100%;appearance:none;height:6px;border-radius:999px;
+  background:linear-gradient(90deg,#4ea3ff,#7c7bff)
+}
+input[type="range"]::-webkit-slider-thumb{
+  appearance:none;width:18px;height:18px;border-radius:50%;
+  background:#fff;border:2px solid #6aa0ff;box-shadow:0 2px 6px rgba(0,0,0,.35)
+}
+.grid-2{display:grid;grid-template-columns:420px 1fr;gap:20px}
+@media (max-width:960px){.grid-2{grid-template-columns:1fr}}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:12px}
+@media (max-width:960px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+.stat{
+  background:#0f1630;border:1px solid rgba(200,220,255,.12);
+  border-radius:16px;padding:16px;text-align:center
+}
+.stat h3{margin:0 0 6px;font-weight:600;font-size:14px;opacity:.8}
+.stat .val{font-size:32px;font-weight:700;letter-spacing:.5px}
+
+
+/* 右欄頂部優先顯示視訊（或畫布） */
+.grid-2{display:grid;grid-template-columns:520px 1fr;gap:20px}
+.grid-2 > :nth-child(2){display:flex;flex-direction:column;gap:16px}
+.grid-2 > :nth-child(2) > *:has(video){order:-1}
+.grid-2 > :nth-child(2) > *:has(canvas){order:-1}
+.grid-2{display:grid;grid-template-columns:520px 1fr;gap:20px}
+.grid-2 > :nth-child(2){display:flex;flex-direction:column;gap:16px}
+.grid-2 > :nth-child(2) > *:has(video){order:-1}
+.grid-2 > :nth-child(2) > *:has(canvas){order:-1}
+#root > div{display:grid;grid-template-columns:520px 1fr;gap:20px}
+#root > div > :nth-child(2){display:flex;flex-direction:column;gap:16px}
+#root > div > :nth-child(2) > *:has(video){order:-1}
+#root > div > :nth-child(2) > *:has(canvas){order:-1}
+#root > div{display:grid;grid-template-columns:520px 1fr;gap:20px}
+#root > div > :nth-child(2){display:flex;flex-direction:column;gap:16px}
+#root > div > :nth-child(2) > *:has(video){order:-1}
+#root > div > :nth-child(2) > *:has(canvas){order:-1}
+
+/* ===== 背景與版心 ===== */
+body{
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(80,120,255,.20), transparent 60%),
+    radial-gradient(900px 600px at 100% 10%, rgba(120,80,255,.18), transparent 60%),
+    #0b1020;
+}
+#root{ padding:28px }
+#root>*{ max-width:1280px }
+
+/* ===== 兩欄排版與區塊間距 ===== */
+#root > div{ display:grid; grid-template-columns:520px 1fr; gap:24px }
+#root > div > :nth-child(2){ display:flex; flex-direction:column; gap:20px }
+
+/* 視訊優先到右上角，並套造型 */
+#root > div > :nth-child(2) > *:has(video){ order:-1 }
+video, canvas{
+  border-radius:18px;
+  outline:1px solid rgba(200,220,255,.10);
+  box-shadow:
+    0 20px 60px rgba(0,0,0,.45),
+    inset 0 1px 0 rgba(255,255,255,.04);
+  background:#000;
+}
+
+/* ===== 標題 ===== */
+h1{
+  font-weight:800;
+  letter-spacing:.3px;
+  font-size: clamp(22px, 2.2vw, 28px);
+  display:flex; align-items:center; gap:10px;
+}
+h1::after{
+  content:"";
+  flex:1 1 auto;
+  height:1px; margin-left:12px;
+  background:linear-gradient(90deg, rgba(120,160,255,.35), rgba(120,160,255,0));
+}
+
+/* ===== 卡片（偵測狀態、拍手事件等） ===== */
+.card-like, 
+#root > div .card, 
+#root > div > :nth-child(2) > div{
+  background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.00)) #0f1630;
+  border:1px solid rgba(180,200,255,.14);
+  border-radius:16px;
+  padding:16px;
+  box-shadow: 0 8px 26px rgba(4,10,40,.35), inset 0 1px 0 rgba(255,255,255,.04);
+}
+
+/* ===== 控制群組（按鈕/步驟） ===== */
+button{
+  background:linear-gradient(180deg, #1b2750, #162147);
+  border:1px solid rgba(210,225,255,.22);
+  color:#eaf0ff;
+  padding:8px 14px; border-radius:12px;
+  box-shadow:0 6px 14px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06);
+  transition: transform .12s ease, background .12s ease, box-shadow .12s ease;
+}
+button:hover:not(:disabled){ transform:translateY(-1px); background:#223067 }
+button:active:not(:disabled){ transform:translateY(0); box-shadow:0 4px 10px rgba(0,0,0,.25) }
+button:disabled{ opacity:.55 }
+
+/* ===== 數值卡片（Perfect/Good/Miss/分數） ===== */
+.stats-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px }
+@media (max-width:1100px){ .stats-row{ grid-template-columns:repeat(2,1fr) } }
+.stat{
+  background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)) #0f1630;
+  border:1px solid rgba(200,220,255,.14);
+  border-radius:18px; padding:18px; text-align:center;
+  box-shadow: 0 10px 24px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.stat .val{ font-size:36px; font-weight:800 }
+.stat h3{ font-weight:600; opacity:.8; margin:4px 0 0 }
+.stats-row > :nth-child(1){ box-shadow: 0 0 0 1px rgba(80,220,150,.25) inset, 0 12px 26px rgba(80,220,150,.18) }
+.stats-row > :nth-child(2){ box-shadow: 0 0 0 1px rgba(120,190,255,.25) inset, 0 12px 26px rgba(120,190,255,.18) }
+.stats-row > :nth-child(3){ box-shadow: 0 0 0 1px rgba(255,120,140,.28) inset, 0 12px 26px rgba(255,120,140,.18) }
+.stats-row > :nth-child(4){ box-shadow: 0 0 0 1px rgba(255,210,120,.28) inset, 0 12px 26px rgba(255,210,120,.20) }
+
+/* ===== 滑桿 ===== */
+input[type="range"]{
+  height:8px;
+  background:linear-gradient(90deg,#57a6ff,#8f7bff);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.35);
+}
+input[type="range"]::-webkit-slider-thumb{
+  width:20px;height:20px;border-radius:50%;
+  background:#fff;border:2px solid #6aa0ff;
+  box-shadow:0 3px 8px rgba(0,0,0,.35)
+}
+
+/* ===== 小丑圖小動畫（更活潑） ===== */
+#root > div > :first-child img{
+  animation: bob 3.6s ease-in-out infinite;
+  filter: drop-shadow(0 12px 22px rgba(0,0,0,.35));
+}
+@keyframes bob {
+  0%,100%{ transform:translateY(0) }
+  50%{ transform:translateY(-6px) }
+}
+
+/* ===== 行高與間距微調 ===== */
+p,li{ line-height:1.6 }
+.section{ margin-top:16px }
+
+
+/* ==== 美化加強包 ==== */
+body{
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(80,120,255,.20), transparent 60%),
+    radial-gradient(900px 600px at 100% 10%, rgba(120,80,255,.18), transparent 60%),
+    #0b1020;
+}
+#root{ padding:28px }
+#root>*{ max-width:1280px }
+
+/* 兩欄排版與區塊間距 */
+#root > div{ display:grid; grid-template-columns:520px 1fr; gap:24px }
+#root > div > :nth-child(2){ display:flex; flex-direction:column; gap:20px }
+
+/* 視訊優先到右上角 + 外觀 */
+#root > div > :nth-child(2) > *:has(video){ order:-1 }
+video, canvas{
+  border-radius:18px;
+  outline:1px solid rgba(200,220,255,.10);
+  box-shadow: 0 20px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04);
+  background:#000;
+}
+
+/* 標題 */
+h1{
+  font-weight:800; letter-spacing:.3px;
+  font-size: clamp(22px, 2.2vw, 28px);
+  display:flex; align-items:center; gap:10px;
+}
+h1::after{
+  content:""; flex:1 1 auto; height:1px; margin-left:12px;
+  background:linear-gradient(90deg, rgba(120,160,255,.35), rgba(120,160,255,0));
+}
+
+/* 卡片（偵測狀態、拍手事件等） */
+.card-like,
+#root > div .card,
+#root > div > :nth-child(2) > div{
+  background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.00)) #0f1630;
+  border:1px solid rgba(180,200,255,.14);
+  border-radius:16px; padding:16px;
+  box-shadow: 0 8px 26px rgba(4,10,40,.35), inset 0 1px 0 rgba(255,255,255,.04);
+}
+
+/* 控制按鈕 */
+button{
+  background:linear-gradient(180deg, #1b2750, #162147);
+  border:1px solid rgba(210,225,255,.22);
+  color:#eaf0ff; padding:8px 14px; border-radius:12px;
+  box-shadow:0 6px 14px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06);
+  transition: transform .12s ease, background .12s ease, box-shadow .12s ease;
+}
+button:hover:not(:disabled){ transform:translateY(-1px); background:#223067 }
+button:active:not(:disabled){ transform:translateY(0); box-shadow:0 4px 10px rgba(0,0,0,.25) }
+button:disabled{ opacity:.55 }
+
+/* 統計卡片行 */
+.stats-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px }
+@media (max-width:1100px){ .stats-row{ grid-template-columns:repeat(2,1fr) } }
+.stat{
+  background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)) #0f1630;
+  border:1px solid rgba(200,220,255,.14);
+  border-radius:18px; padding:18px; text-align:center;
+  box-shadow: 0 10px 24px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.stat .val{ font-size:36px; font-weight:800 }
+.stat h3{ font-weight:600; opacity:.8; margin:4px 0 0 }
+.stats-row > :nth-child(1){ box-shadow: 0 0 0 1px rgba(80,220,150,.25) inset, 0 12px 26px rgba(80,220,150,.18) }
+.stats-row > :nth-child(2){ box-shadow: 0 0 0 1px rgba(120,190,255,.25) inset, 0 12px 26px rgba(120,190,255,.18) }
+.stats-row > :nth-child(3){ box-shadow: 0 0 0 1px rgba(255,120,140,.28) inset, 0 12px 26px rgba(255,120,140,.18) }
+.stats-row > :nth-child(4){ box-shadow: 0 0 0 1px rgba(255,210,120,.28) inset, 0 12px 26px rgba(255,210,120,.20) }
+
+/* 滑桿 */
+input[type="range"]{
+  height:8px; background:linear-gradient(90deg,#57a6ff,#8f7bff);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.35);
+}
+input[type="range"]::-webkit-slider-thumb{
+  width:20px; height:20px; border-radius:50%;
+  background:#fff; border:2px solid #6aa0ff; box-shadow:0 3px 8px rgba(0,0,0,.35)
+}
+
+/* 小丑圖微動畫 */
+#root > div > :first-child img{
+  animation: bob 3.6s ease-in-out infinite;
+  filter: drop-shadow(0 12px 22px rgba(0,0,0,.35));
+}
+@keyframes bob{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+/* 行高與段落間距 */
+p,li{ line-height:1.6 }
+.section{ margin-top:16px }
+

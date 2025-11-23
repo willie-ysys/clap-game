@@ -1,0 +1,248 @@
+
+/* =========================
+   小丑打鼓：特效相關
+   ========================= */
+.fx-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.fx-clown {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.fx-clown-img {
+  width: 100%;
+  height: auto;
+  max-width: 420px;
+  pointer-events: none;
+}
+
+.fx-sticks {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.fx-stick {
+  position: absolute;
+  width: 120px;
+  height: 10px;
+  background: linear-gradient(#f7d9a6, #e79b4a);
+  border-radius: 6px;
+  box-shadow: 0 0 6px rgba(0, 0, 0, .3);
+  transform-origin: 10px 5px;
+  opacity: .9;
+}
+
+.fx-stick-left {
+  left: 18%;
+  top: 34%;
+  rotate: -25deg;
+}
+
+.fx-stick-right {
+  right: 15%;
+  top: 28%;
+  rotate: 20deg;
+}
+
+/* 棒子揮動動畫 */
+.fx-sticks.fx-sticks .fx-stick-left {
+  animation: stickL .12s ease-out;
+}
+
+.fx-sticks.fx-sticks .fx-stick-right {
+  animation: stickR .12s ease-out;
+}
+
+@keyframes stickL {
+  0% { rotate: -25deg }
+  60% { rotate: -60deg }
+  100% { rotate: -25deg }
+}
+
+@keyframes stickR {
+  0% { rotate: 20deg }
+  60% { rotate: 55deg }
+  100% { rotate: 20deg }
+}
+
+/* 鼓面 + 呼吸圈 */
+.fx-drum {
+  position: absolute;
+  bottom: 12%;
+  width: 42%;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+}
+
+.fx-head {
+  width: 76%;
+  height: 76%;
+  background: radial-gradient(closest-side, #ffd36b, #f3a43b);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 6px 10px rgba(0, 0, 0, .25),
+    0 4px 14px rgba(255, 180, 40, .35);
+}
+
+.fx-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 200, 80, .5);
+  box-shadow: 0 0 18px rgba(255, 200, 80, .45);
+  transform: scale(.9);
+  opacity: 0;
+}
+
+/* 鼓面被敲擊時的脈動效果 */
+.fx-pulse .fx-head {
+  animation: headPulse .16s ease-out;
+}
+
+.fx-pulse .fx-ring {
+  animation: ringPulse .16s ease-out;
+}
+
+@keyframes headPulse {
+  0% { transform: scale(1) }
+  55% { transform: scale(1.08) }
+  100% { transform: scale(1) }
+}
+
+@keyframes ringPulse {
+  0% {
+    opacity: 0;
+    transform: scale(.8);
+  }
+  40% {
+    opacity: .9;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.15);
+  }
+}
+
+/* 小丑輕微震動效果：只讓圖片晃，不把整個小丑推走 */
+.fx-shake .fx-clown-img {
+  animation: clownShake 0.16s ease-in-out;
+}
+
+@keyframes clownShake {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  25% {
+    transform: translate3d(-3px, 0, 0);  /* 往左 3px */
+  }
+  50% {
+    transform: translate3d(3px, 0, 0);   /* 往右 3px */
+  }
+  75% {
+    transform: translate3d(-1.5px, 0, 0);/* 收斂回來一點 */
+  }
+}
+
+
+
+
+/* 紙花層 */
+.fx-confetti-layer {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.fx-confetti {
+  position: absolute;
+  top: -10px;
+  width: 10px;
+  height: 10px;
+  background: hsl(var(--h, 200) 85% 60%);
+  border-radius: 2px;
+  opacity: .95;
+  animation-name: confDrop, confSpin;
+  animation-timing-function: linear, ease-in-out;
+}
+
+.fx-confetti::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, .45);
+  mix-blend-mode: overlay;
+}
+
+@keyframes confDrop {
+  to {
+    transform: translateY(140%);
+    opacity: .2;
+  }
+}
+
+@keyframes confSpin {
+  0% { rotate: 0deg }
+  100% { rotate: 360deg }
+}
+
+/* =========================
+   版面調整：左右面板
+   ========================= */
+
+/* 左側整張卡片：內容垂直置中 */
+.card.side-panel.left-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;  /* 垂直置中整塊內容 */
+}
+
+/* 左側內層容器：讓內容吃滿寬度 */
+.left-panel-inner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 左側標題：🎭 小丑打鼓台 置中 */
+.left-panel-title {
+  width: 100%;
+  text-align: center;    /* 水平置中 */
+  margin: 0 0 12px;      /* 跟下面卡片的距離 */
+  font-size: 22px;
+  font-weight: 700;
+}
+/* 左側偵測狀態列：左右兩欄排版 */
+.det-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 13px;
+}
+
+/* 標籤 & 數值都不允許換行，避免「手掌速\n度」這種情況 */
+.det-label,
+.det-value {
+  white-space: nowrap;
+}
+
+/* 標籤略淡一點 */
+.det-label {
+  opacity: 0.9;
+}
+
+/* 數值固定一點寬度並靠右排，好看對齊 */
+.det-value {
+  min-width: 80px;   /* 可以再調大或調小 */
+  text-align: right;
+}

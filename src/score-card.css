@@ -1,0 +1,9 @@
+.score-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:6px}
+.kpi{background:#0f1635;border:1px dashed #2b3874;border-radius:14px;padding:12px 10px;text-align:center;box-shadow:0 6px 16px rgba(10,20,60,.22)}
+.kpi .v{font-size:28px;font-weight:800;line-height:1.1}
+.kpi .t{opacity:.8;margin-top:4px;font-size:13px}
+.kpi.perfect .v{color:#00ffaa}
+.kpi.good .v{color:#5cc9ff}
+.kpi.miss .v{color:#ff6b6b}
+.kpi.acc .v{color:#ffd166}
+@media (max-width:980px){.score-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
