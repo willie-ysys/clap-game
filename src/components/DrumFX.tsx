@@ -12,7 +12,7 @@ export interface DrumFXHandle {
   celebrate: (v: Verdict) => void;
 }
 
-// ⭐ 這版 DrumFX 不會畫小丑，只負責閃光 & 評分標籤
+// ⭐ 這版 DrumFX：只負責閃光 & 評分標籤，不畫小丑、不畫鼓
 const DrumFX = forwardRef<DrumFXHandle>((props, ref) => {
   const [flash, setFlash] = useState(false);
   const [label, setLabel] = useState<Verdict | "-">("-");
