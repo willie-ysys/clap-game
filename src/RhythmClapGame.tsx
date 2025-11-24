@@ -751,7 +751,7 @@ export default function RhythmClapGame() {
           }
         >
         <div id="clown-hero" className={imgAnim}>
-          <img src="/yy.png" alt="clown" />
+          <img src="/clown.png" alt="clown" />
         </div>
 
           {/* ⭐ 音符特效層 */}
